@@ -30,7 +30,7 @@ ssh $REMOTE_USER@$HYPERVISOR_IP "sudo shutdown -r &"
 ssh -t $REMOTE_USER@129.69.139.1 sudo screen /dev/ttyUSB0 115200
 
 HR
-LOGIT "Re(start) all vms on hypervisor01 - execute »safe_restart_vms.sh« on hypervisor01 and reboot\nPress return to continue"; read
+LOGIT "Re(start) all vms on hypervisor01 - execute »safe_restart_vms.sh« on hypervisor01\nPress return to continue"; read
 scp safe_restart_vms.sh $REMOTE_USER@$HYPERVISOR_IP:/tmp/safe_restart_vms.sh
 ssh -t $REMOTE_USER@$HYPERVISOR_IP bash /tmp/safe_restart_vms.sh
 HR
@@ -70,6 +70,14 @@ for host in mail01 sympa ldap01 imap01; do
 done
 
 LOGIT "Check finanz vm"
+for sec in {0..60}; do
+	echo -n -e "\e[1;33m\rWait $sec/60 seconds for open RDP port.\e[0m\n"
+	if nmap -p 3389 129.69.139.57 | grep -q filtered; then
+		sleep 1
+	else
+		break
+	fi
+done
 xfreerdp /u:$REMOTE_USER /d:samba.faveve.uni-stuttgart.de /v:129.69.139.57 || ERROR "Failed to connect to finanzen via RDP!"
 
 LOGIT "Check for failed services"
