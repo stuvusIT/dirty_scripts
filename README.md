@@ -27,4 +27,4 @@ Fix commonly failed hosts and check for failed units and some other stuff.
 
 ## `safe_restart_vms.sh`
 
-A script which restart all vms and iscsi devices at our hypervisor. This script is intended to be executed directly at the hypervisor or is invoked by `reboot.sh` . You can specify `stop` as first argument, to only stop all vms and logout from all iscsi devices.
+A script which restart all vms and iscsi devices at our hypervisor. This script is intended to be executed directly at the hypervisor or is invoked by `reboot.sh` . You can specify `stop` as first argument, to only stop all vms and logout from all iscsi devices. The script doesn't start/boot VMs listed in `/etc/xen/disabled_vms.txt` (one VM per line).
