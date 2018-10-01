@@ -2,6 +2,8 @@
 function LOGIT {
 	echo -e "\n\e[1;32m$*\e[0m\n"
 }
+TERM=ansi
+export TERM=ansi
 
 LOGIT "show all running vms"
 sudo xl list
