@@ -71,9 +71,6 @@ LOGIT "Check finanz vm"
 xfreerdp /u:$REMOTE_USER /d:samba.faveve.uni-stuttgart.de /v:129.69.139.57
 
 LOGIT "Check for failed services"
-ssh hypervisor grep ip /etc/xen/vms/\*.cfg | sed 's/.*ip\=\([0-9]*\.[0-9]*\.[0-9]*\.[0-9]*\).*/\1/g'
-
-LOGIT "Check for failed services"
 for ip in `ssh $REMOTE_USER@hypervisor01 grep 'ip=' /etc/xen/vms/\*.cfg | sed 's/.*ip\=\([0-9]*\.[0-9]*\.[0-9]*\.[0-9]*\).*/\1/g' | sort | uniq`; do
 	echo -ne "\tcheck ›$ip‹ "
 	if ! ping -c 1 -W 1 $ip >/dev/null; then
