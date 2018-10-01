@@ -69,9 +69,12 @@ for host in mail01 sympa ldap01 imap01; do
 	ssh root-mmroch@$host sudo systemctl reset-failed systemd-modules-load.service
 done
 
+LOGIT "Restart confluence"
+ssh $REMOTE_USER@wiki01 sudo systemctl restart confluence.service
+
 LOGIT "Check for failed services"
 for ip in `ssh $REMOTE_USER@hypervisor01 grep 'ip=' /etc/xen/vms/\*.cfg | sed 's/.*ip\=\([0-9]*\.[0-9]*\.[0-9]*\.[0-9]*\).*/\1/g' | sort | uniq`; do
-	echo -ne "\tcheck ›$ip‹ "
+	echo -ne "\tcheck ›$ip‹                                               \r"
 	if ! ping -c 1 -W 1 $ip >/dev/null; then
 		echo -e "\r\e[33m\tskip ip ›\e[0m$ip\e[33m‹ (can't ping)\e[0m"
 		continue
@@ -84,12 +87,13 @@ for ip in `ssh $REMOTE_USER@hypervisor01 grep 'ip=' /etc/xen/vms/\*.cfg | sed 's
 	fi
 	if ssh $use_user@$ip sudo systemctl --failed | grep -q "0 loaded units listed."; then
 		host_name=`ssh $use_user@$ip hostname`
-		echo -e "\r\e[32m\tno failed units on ›\e[0m$ip\e[32m‹\e[0m ($host_name)"
+		echo -e -n "\r\e[32m\tno failed units on ›\e[0m$ip\e[32m‹\e[0m ($host_name)\r"
 		continue
 	fi
 	echo -e "\r\e[1;31m\tfailed units on ›\e[0m$ip\e[1;31m‹\e[0m"
 	ssh $use_user@$ip sudo systemctl --failed
-	ssh $use_user@$ip
+	ssh -t $use_user@$ip
+	echo ""
 done
 
 LOGIT "Check finanz vm"
@@ -103,4 +107,4 @@ for sec in {0..120}; do
 done
 xfreerdp /u:$REMOTE_USER /d:samba.faveve.uni-stuttgart.de /v:129.69.139.57 || ERROR "Failed to connect to finanzen via RDP!"
 
-echo -e "\e[1;31m\n\n\tPlease keep in mind to check Jira manually\n\n"
+echo -e "\e[1;31m\n\n\tPlease keep in mind to check Jira and Confluence manually\n\n"
