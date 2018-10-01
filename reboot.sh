@@ -69,17 +69,6 @@ for host in mail01 sympa ldap01 imap01; do
 	ssh root-mmroch@$host sudo systemctl reset-failed systemd-modules-load.service
 done
 
-LOGIT "Check finanz vm"
-for sec in {0..60}; do
-	echo -n -e "\e[1;33m\rWait $sec/60 seconds for open RDP port.\e[0m\n"
-	if nmap -p 3389 129.69.139.57 | grep -q filtered; then
-		sleep 1
-	else
-		break
-	fi
-done
-xfreerdp /u:$REMOTE_USER /d:samba.faveve.uni-stuttgart.de /v:129.69.139.57 || ERROR "Failed to connect to finanzen via RDP!"
-
 LOGIT "Check for failed services"
 for ip in `ssh $REMOTE_USER@hypervisor01 grep 'ip=' /etc/xen/vms/\*.cfg | sed 's/.*ip\=\([0-9]*\.[0-9]*\.[0-9]*\.[0-9]*\).*/\1/g' | sort | uniq`; do
 	echo -ne "\tcheck ›$ip‹ "
@@ -102,5 +91,16 @@ for ip in `ssh $REMOTE_USER@hypervisor01 grep 'ip=' /etc/xen/vms/\*.cfg | sed 's
 	ssh $use_user@$ip sudo systemctl --failed
 	ssh $use_user@$ip
 done
+
+LOGIT "Check finanz vm"
+for sec in {0..120}; do
+	echo -n -e "\e[1;33m\rWait $sec/120 seconds for open RDP port.\e[0m\n"
+	if nmap -p 3389 129.69.139.57 | grep -q filtered; then
+		sleep 1
+	else
+		break
+	fi
+done
+xfreerdp /u:$REMOTE_USER /d:samba.faveve.uni-stuttgart.de /v:129.69.139.57 || ERROR "Failed to connect to finanzen via RDP!"
 
 echo -e "\e[1;31m\n\n\tPlease keep in mind to check Jira manually\n\n"
