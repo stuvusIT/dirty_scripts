@@ -85,8 +85,8 @@ LOGIT "manual login into finanzen iscsi devices"
 sudo iscsiadm -m node -T iqn.2003-01.org.linux-iscsi.storage01.x8664:stuvus-finanzen-data --login -p 129.69.139.18:3260
 sudo iscsiadm -m node -T iqn.2003-01.org.linux-iscsi.storage01.x8664:stuvus-finanzen-system --login -p 129.69.139.18:3260
 
-for sec in {0..20}; do
-	echo -n -e "\r\tWait $sec/20 seconds"
+for sec in {0..10}; do
+	echo -n -e "\r\tWait $sec/10 seconds"
 	sleep 1
 done
 echo -n -e "\r                              \r"
@@ -101,7 +101,7 @@ for vm in *; do
 	if grep -q -v "$vm" /etc/xen/disabled_vms.txt; then
 		echo -e "\t\e[32mstart vm ›\e[0m$vm\e[32m‹\e[0m"
 		sudo systemctl start vm@$vm
-		sleep 0.5
+		sleep 0.2
 	else
 		echo -e "\t\e[33mskip vm ›\e[0m$vm\e[33m‹\e[0m"
 	fi
