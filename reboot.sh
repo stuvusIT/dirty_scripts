@@ -7,6 +7,8 @@ function LOGIT {
 }
 function ERROR {
 	echo -e "\e[1;31m$*\e[0m"
+	echo "Press return to continue"
+	read
 }
 function HR {
 	echo ""
@@ -68,7 +70,7 @@ for host in mail01 sympa ldap01 imap01; do
 done
 
 LOGIT "Check finanz vm"
-xfreerdp /u:$REMOTE_USER /d:samba.faveve.uni-stuttgart.de /v:129.69.139.57
+xfreerdp /u:$REMOTE_USER /d:samba.faveve.uni-stuttgart.de /v:129.69.139.57 || ERROR "Failed to connect to finanzen via RDP!"
 
 LOGIT "Check for failed services"
 for ip in `ssh $REMOTE_USER@hypervisor01 grep 'ip=' /etc/xen/vms/\*.cfg | sed 's/.*ip\=\([0-9]*\.[0-9]*\.[0-9]*\.[0-9]*\).*/\1/g' | sort | uniq`; do
