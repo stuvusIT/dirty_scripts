@@ -103,7 +103,7 @@ for vm in *; do
 		sudo systemctl start vm@$vm
 		sleep 0.5
 	else
-		echo -e "\t\e[33mskip vm ›\e[0m$vm\e[32m‹\e[0m"
+		echo -e "\t\e[33mskip vm ›\e[0m$vm\e[33m‹\e[0m"
 	fi
 done
 
