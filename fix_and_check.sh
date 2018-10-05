@@ -41,9 +41,31 @@ for host in mail01 sympa ldap01 imap01; do
 	ssh root-mmroch@$host sudo systemctl reset-failed systemd-modules-load.service
 done
 
-LOGIT "Restart confluence"
-echo -e "\tRestart confluence"
-ssh $REMOTE_USER@wiki01 sudo systemctl restart confluence.service
+LOGIT "Check and restart confluence if required"
+for sec in {0..120}; do
+	echo -n -e "\e[1;33m\rWait $sec/120 seconds for confluence to startup.\e[0m"
+	curl -m 1 https://wiki.stuvus.uni-stuttgart.de/ 2>/dev/null | grep 'Übersicht - stuvus Wiki' >/dev/null && # -q is not used here since curl and grep seem to have problems with buffer
+		break
+done
+if curl -m 1 https://wiki.stuvus.uni-stuttgart.de/ 2>/dev/null | grep 'Übersicht - stuvus Wiki' >/dev/null; then
+	echo -e "\r        Confluence has started successfully               "
+else
+	echo -e "\r        Restart confluence                                ";
+	ssh $REMOTE_USER@wiki01 sudo systemctl restart confluence.service;
+	for sec in {0..120}; do
+		echo -n -e "\e[1;33m\rWait $sec/120 seconds for confluence to startup.\e[0m"
+		if curl -m 1 https://wiki.stuvus.uni-stuttgart.de/ 2>/dev/null | grep 'Übersicht - stuvus Wiki' >/dev/null; then
+			echo -e "\r        Confluence has started successfully                   "
+			break
+		fi
+		sleep 1
+	done
+	if curl -m 1 https://wiki.stuvus.uni-stuttgart.de/ 2>/dev/null | grep 'Übersicht - stuvus Wiki' >/dev/null; then
+		echo -e "\r        Confluence has started successfully              "
+		break
+	fi
+	ERROR "\rConfluence has failed to startup, manual fix required"
+fi
 
 LOGIT "Check for failed services"
 for ip in `ssh $REMOTE_USER@hypervisor01 grep 'ip=' /etc/xen/vms/\*.cfg | sed 's/.*ip\=\([0-9]*\.[0-9]*\.[0-9]*\.[0-9]*\).*/\1/g' | sort | uniq`; do
@@ -63,21 +85,23 @@ for ip in `ssh $REMOTE_USER@hypervisor01 grep 'ip=' /etc/xen/vms/\*.cfg | sed 's
 		echo -e -n "\r\e[32m\tno failed units on ›\e[0m$ip\e[32m‹\e[0m ($host_name)\r"
 		continue
 	fi
-	echo -e "\r\e[1;31m\tfailed units on ›\e[0m$ip\e[1;31m‹\e[0m"
+	host_name=`ssh $use_user@$ip hostname`
+	echo -e "\r\e[1;31m\tfailed units on ›\e[0m$ip\e[1;31m‹\e[0m ($host_name)"
 	ssh $use_user@$ip sudo systemctl --failed
-	ssh -t $use_user@$ip
+	#ssh -t $use_user@$ip
 	echo ""
 done
 
 LOGIT "Check finanz vm"
 for sec in {0..120}; do
-	echo -n -e "\e[1;33m\rWait $sec/120 seconds for open RDP port.\e[0m\n"
+	echo -n -e "\e[1;33m\rWait $sec/120 seconds for open RDP port.\e[0m"
 	if nmap -p 3389 129.69.139.57 | grep -q filtered; then
 		sleep 1
 	else
+		echo -e "\r        RDP port on finanzen vm seems to be up."
 		break
 	fi
 done
 xfreerdp /u:$REMOTE_USER /d:samba.faveve.uni-stuttgart.de /v:129.69.139.57 || ERROR "Failed to connect to finanzen via RDP!"
 
-echo -e "\e[1;31m\n\n\tPlease keep in mind to check Jira and Confluence manually\n\n"
+echo -e "\e[1;31m\n\n\tPlease keep in mind to check Jira manually\n\n"
