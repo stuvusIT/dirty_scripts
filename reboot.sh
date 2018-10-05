@@ -35,8 +35,8 @@ ssh -t $REMOTE_USER@$HYPERVISOR_IP bash /tmp/safe_restart_vms.sh
 HR
 
 for sec in {0..60}; do
-	echo -n -e "\e[1;33m\rWait $sec/60 seconds for stuvus.de\e[0m\n"
-	curl -m 10 -i https://stuvus.uni-stuttgart.de 2>/dev/null | head -n 1 | grep -q '200' && break
+	echo -n -e "\e[1;33m\rWait $(($sec*5))/300 seconds for stuvus.de\e[0m\n"
+	curl -m 5 -i https://stuvus.uni-stuttgart.de 2>/dev/null | head -n 1 | grep -q '200' && break
 done
 
 ./fix_and_check.sh
