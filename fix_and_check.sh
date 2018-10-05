@@ -20,9 +20,13 @@ done
 
 LOGIT "Restart openvpn services"
 for host in openvpn01 openvpn02; do
-	echo -e "\tFix and restart openvpn on $host"
-	ssh $REMOTE_USER@$host sudo systemctl restart openvpn@openvpn_udp_1194.service
-	ssh $REMOTE_USER@$host sudo brctl show | grep -q tap || ERROR "Failed on $host"
+	if ssh $REMOTE_USER@$host sudo brctl show | grep -q tap; then
+		echo -e "\topenvpn service on $host seems to be okay"
+	else
+		echo -e "\tFix and restart openvpn on $host"
+		ssh $REMOTE_USER@$host sudo systemctl restart openvpn@openvpn_udp_1194.service
+		ssh $REMOTE_USER@$host sudo brctl show | grep -q tap || ERROR "Failed on $host"
+	fi
 done
 
 LOGIT "Fix imap01 (restart dovecot and exim4)"
