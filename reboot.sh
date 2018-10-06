@@ -36,7 +36,8 @@ HR
 
 for sec in {0..60}; do
 	echo -n -e "\e[1;33m\rWait $(($sec*5))/300 seconds for stuvus.de\e[0m\n"
-	curl -m 5 -i https://stuvus.uni-stuttgart.de 2>/dev/null | head -n 1 | grep -q '200' && break
+	curl -m 1 -i https://stuvus.uni-stuttgart.de 2>/dev/null | head -n 1 | grep -q '200' && break
+	sleep 4
 done
 
 ./fix_and_check.sh

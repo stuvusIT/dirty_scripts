@@ -101,7 +101,7 @@ for vm in *; do
 	if grep -q -v "$vm" /etc/xen/disabled_vms.txt; then
 		echo -e "\t\e[32mstart vm ›\e[0m$vm\e[32m‹\e[0m"
 		sudo systemctl start vm@$vm
-		sleep 0.2
+		sleep 15
 	else
 		echo -e "\t\e[33mskip vm ›\e[0m$vm\e[33m‹\e[0m"
 	fi
