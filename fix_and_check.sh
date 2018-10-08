@@ -50,6 +50,7 @@ for sec in {0..120}; do
 	echo -n -e "\e[1;33m\rWait $sec/120 seconds for confluence to startup.\e[0m"
 	curl -m 1 https://wiki.stuvus.uni-stuttgart.de/ 2>/dev/null | grep 'Übersicht - stuvus Wiki' >/dev/null && # -q is not used here since curl and grep seem to have problems with buffer
 		break
+	sleep 1
 done
 if curl -m 1 https://wiki.stuvus.uni-stuttgart.de/ 2>/dev/null | grep 'Übersicht - stuvus Wiki' >/dev/null; then
 	echo -e "\r        Confluence has started successfully               "
