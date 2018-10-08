@@ -124,9 +124,10 @@ function start_vms {
 			echo -e "\t\e[33mskip vm ›\e[0m$vm\e[33m‹\e[0m"
 		else
 			echo -e "\t\e[32mstart vm ›\e[0m$vm\e[32m‹\e[0m"
-			sudo systemctl start vm@$vm
 			rvm=$((`sudo xl list | wc -l`-2))
 			rvm=$((rvm +9))
+			echo -ne "\tWait $((rvm /10)).$((rvm %10))sec   \r"
+			sudo systemctl start vm@$vm
 			for i in $(seq $rvm -1 1); do
 				echo -ne "\tWait $((i /10)).$((i %10))sec   \r"
 				sleep 0.1

@@ -17,19 +17,25 @@ function HR {
 	printf "\e[1;31m%*s\e[0m\n" "${COLUMNS:-$(tput cols)}" "" | tr " " -
 	echo ""
 }
+function READ {
+	mplayer finn.wav &>/dev/null &
+	read
+}
 
 HR
-LOGIT "Stop all vms on hypervisor01 - execute »safe_restart_vms.sh« on hypervisor01\nPress return to continue"; read
+LOGIT "Stop all vms on hypervisor01 - execute »safe_restart_vms.sh« on hypervisor01"
 scp safe_restart_vms.sh $REMOTE_USER@$HYPERVISOR_IP:/tmp/safe_restart_vms.sh
 ssh -t $REMOTE_USER@$HYPERVISOR_IP bash /tmp/safe_restart_vms.sh stop
 HR
 
-LOGIT "Reboot and wait for server to come back online (Press Ctrl+a followed by 'k' after you see the login screen)\nPress return to continue"; read
+LOGIT "Reboot and wait for server to come back online"
 ssh $REMOTE_USER@$HYPERVISOR_IP "sudo shutdown -r &"
-ssh -t $REMOTE_USER@129.69.139.1 sudo screen /dev/ttyUSB0 115200
+scp reboot_hypervisor.sh $REMOTE_USER@129.69.139.1:/tmp/reboot_hypervisor.sh
+scp reboot_hypervisor.expect $REMOTE_USER@129.69.139.1:/tmp/reboot_hypervisor.expect
+ssh -t $REMOTE_USER@129.69.139.1 bash /tmp/reboot_hypervisor.sh
 
 HR
-LOGIT "Re(start) all vms on hypervisor01 - execute »safe_restart_vms.sh« on hypervisor01\nPress return to continue"; read
+LOGIT "Re(start) all vms on hypervisor01 - execute »safe_restart_vms.sh« on hypervisor01\nPress return to continue"; READ
 scp safe_restart_vms.sh $REMOTE_USER@$HYPERVISOR_IP:/tmp/safe_restart_vms.sh
 ssh -t $REMOTE_USER@$HYPERVISOR_IP bash /tmp/safe_restart_vms.sh
 HR

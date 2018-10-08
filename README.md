@@ -17,6 +17,7 @@ It requires following tools installed:
  * scp,ssh
  * curl
  * grep
+ * mplayer - to indicate user attention
 
 
 #### `fix_and_check.sh`
@@ -41,3 +42,13 @@ If no argument is given `restart` is assumed.
 #### `disable_vms.sh`
 
 A script which list and modifies disabled VMs. VMs listed in `/etc/xen/disabled_vms.txt`. You can execute this script right inside this repository.
+
+
+#### `reboot_hypervisor.sh`
+
+Helper script to close all services using the serial port our hypervisor is attached to and to execute `reboot_hypervisor.expect`. This invoked by `reboot.sh`, don't execute it directly.
+
+
+#### `reboot_hypervisor.expect`
+
+Helper script to enter the luks password. This script is invoked by `reboot_hypervisor.sh` which is used by `reboot.sh` and should never be executed directly by the user.

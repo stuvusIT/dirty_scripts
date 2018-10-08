@@ -1,0 +1,19 @@
+#!/usr/bin/expect -f
+set timeout -1
+expect_user -re "(.*)\n"
+set password "$expect_out(1,string)"
+send_user "\033\[1;5;31m\n\n\tLean back and relax, the password is entered automatically !!\033\[0m"
+send_user "\033\[0m\n\tscreen closes after server has rebooted automatically\n\n\n"
+sleep 5
+
+spawn screen /dev/ttyUSB0 115200
+	send "\r"; sleep 1; send "\r"
+	expect "Ubuntu GNU/Linux, with Xen hypervisor"
+	sleep 2
+	send "\r"
+	expect "Please enter passphrase for disk "
+	sleep 0.1
+	send "$password\r"
+	expect "login: "
+	send "\x01"; send "k"; send "y"
+close
