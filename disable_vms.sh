@@ -1,4 +1,18 @@
 #!/bin/bash
+BASE_DIR="$( dirname "$( realpath -s "${BASH_SOURCE[0]}" )" )/"
+cd $BASE_DIR
+
+[[ "$HOSTNAME" = *hypervisor* ]] || {
+	echo -n execute on remote hypervisor;
+	source config.inc.sh
+	echo " $HYPERVISOR_IP"
+	scp $0 $REMOTE_USER@$HYPERVISOR_IP:/tmp/disable_vms.sh
+	tput smcup
+	ssh -t $REMOTE_USER@$HYPERVISOR_IP bash /tmp/disable_vms.sh
+	tput rmcup
+	exit $?
+}
+
 cd /etc/xen/vms/
 
 function vm_list() {
@@ -11,6 +25,7 @@ function vm_list() {
 }
 LINES=$(tput lines)
 COLUMNS=$(tput cols)
-a=$(echo -n dialog --title '"Disabled VMs"' --checklist '" "' $((LINES-10)) $((COLUMNS-10)) $((LINES-15)) " " ; vm_list | tr '\n' ' ')
-eval $a 2>/tmp/disabled_vms.txt
-cat /tmp/disabled_vms.txt | tr ' ' '\n' | sudo tee /etc/xen/disabled_vms.txt
+a=$(echo -n dialog --title '"Disabled VMs"' --checklist '"Please select all VMs, that should be disabled"' $((LINES-10)) $((COLUMNS-10)) $((LINES-15)) " " ; vm_list | tr '\n' ' ')
+eval $a 2>/tmp/disabled_vms.txt && {
+	cat /tmp/disabled_vms.txt | tr ' ' '\n' | sudo tee /etc/xen/disabled_vms.txt
+}
