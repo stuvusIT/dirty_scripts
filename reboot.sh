@@ -44,7 +44,7 @@ ssh -t $REMOTE_USER@129.69.139.1 bash /tmp/reboot_hypervisor.sh
 HR
 LOGIT "Re(start) all vms on hypervisor01 - execute »safe_restart_vms.sh« on hypervisor01\nPress return to continue"; READ
 scp safe_restart_vms.sh $REMOTE_USER@$HYPERVISOR_IP:/tmp/safe_restart_vms.sh
-ssh -t $REMOTE_USER@$HYPERVISOR_IP bash /tmp/safe_restart_vms.sh
+ssh -t $REMOTE_USER@$HYPERVISOR_IP bash /tmp/safe_restart_vms.sh restart
 HR
 
 for sec in {0..60}; do

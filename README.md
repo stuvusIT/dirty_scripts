@@ -36,7 +36,7 @@ This script can take exactly zero or one argument
  * stop - stop all running VMs and logout from all iSCSI devices
  * restart - do both `start` and `stop`
 
-If no argument is given `restart` is assumed.
+If no argument is given `start` is assumed.
 
 
 #### `disable_vms.sh`

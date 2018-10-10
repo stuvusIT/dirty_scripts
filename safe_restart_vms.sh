@@ -149,13 +149,6 @@ show_failed
 show_vms
 
 case $1 in
-	start)
-		login_iscsi
-		show_failed
-		start_vms
-		show_vms
-		show_failed
-		;;
 	stop)
 		shutdown_vms
 		show_failed
@@ -163,10 +156,17 @@ case $1 in
 		show_vms
 		show_failed
 		;;
-	restart|*)
+	restart)
 		shutdown_vms
 		show_failed
 		logout_iscsi
+		login_iscsi
+		show_failed
+		start_vms
+		show_vms
+		show_failed
+		;;
+	start|*)
 		login_iscsi
 		show_failed
 		start_vms
