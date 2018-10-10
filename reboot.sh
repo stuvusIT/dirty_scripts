@@ -23,10 +23,12 @@ function READ {
 }
 
 HR
+if ping -c 1 -W 1 &>/dev/null; then
 LOGIT "Stop all vms on hypervisor01 - execute »safe_restart_vms.sh« on hypervisor01"
 scp safe_restart_vms.sh $REMOTE_USER@$HYPERVISOR_IP:/tmp/safe_restart_vms.sh
 ssh -t $REMOTE_USER@$HYPERVISOR_IP bash /tmp/safe_restart_vms.sh stop
 HR
+fi
 
 LOGIT "Reboot and wait for server to come back online"
 ssh $REMOTE_USER@$HYPERVISOR_IP "sudo shutdown -r &"
