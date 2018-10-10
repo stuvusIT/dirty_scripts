@@ -27,17 +27,18 @@ function READ {
 }
 
 HR
-if ping -c 1 -W 1 &>/dev/null; then
-LOGIT "Stop all vms on hypervisor01 - execute »safe_restart_vms.sh« on hypervisor01"
+if ping -c 1 -W 1 $HYPERVISOR_IP &>/dev/null; then
+LOGIT "Stop all vms on hypervisor01 - execute »safe_restart_vms.sh« on hypervisor01\nPress return to continue"; READ
 scp safe_restart_vms.sh $REMOTE_USER@$HYPERVISOR_IP:/tmp/safe_restart_vms.sh
 ssh -t $REMOTE_USER@$HYPERVISOR_IP bash /tmp/safe_restart_vms.sh stop
 HR
 fi
 
 LOGIT "Reboot and wait for server to come back online"
-ssh $REMOTE_USER@$HYPERVISOR_IP "sudo shutdown -r &"
+ping -c 1 -W 1 $HYPERVISOR_IP && ssh $REMOTE_USER@$HYPERVISOR_IP "sudo shutdown -r &"
 scp reboot_hypervisor.sh $REMOTE_USER@129.69.139.1:/tmp/reboot_hypervisor.sh
 scp reboot_hypervisor.expect $REMOTE_USER@129.69.139.1:/tmp/reboot_hypervisor.expect
+mplayer finn.wav &>/dev/null &
 ssh -t $REMOTE_USER@129.69.139.1 bash /tmp/reboot_hypervisor.sh
 
 HR
