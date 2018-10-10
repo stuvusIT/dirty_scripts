@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 BASE_DIR="$( dirname "$( realpath -s "${BASH_SOURCE[0]}" )" )/"
 cd $BASE_DIR
 source config.inc.sh

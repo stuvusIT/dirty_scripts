@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 for pid in `sudo lsof -t /dev/ttyUSB0`; do
 	echo $pid
 	sudo kill $pid

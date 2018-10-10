@@ -1,4 +1,8 @@
-#!/bin/bash
+#!/usr/bin/env bash
+set -e
+set -u
+set -o pipefail
+
 BASE_DIR="$( dirname "$( realpath -s "${BASH_SOURCE[0]}" )" )/"
 cd $BASE_DIR
 source config.inc.sh
