@@ -29,7 +29,7 @@ function TEST_100M {
 function TEST_M {
 	local tasks=$1
 	local task_size=$2
-	local mod=$(( 100 / task_size ))
+	local mod=$(( 104857600 / task_size ))
 
 	echo -n -e "\r\t\t\tTest processes are starting"
 
@@ -37,20 +37,20 @@ function TEST_M {
 		(
 			skip=$(( i % mod ))
 #			echo -e "\ntasks=$tasks, task_size=$task_size, skip=$skip, i=$i"
-			dd if=/tmp/test.bin.img of=/io_test/test_${tasks}_${task_size}_${i}.bin.img bs=${task_size}M count=1 conv=fsync iflag=fullblock,sync oflag=sync skip=$skip &>/dev/null
-			dd if=/io_test/test_${tasks}_${task_size}_${i}.bin.img of=/dev/null bs=${task_size}M iflag=fullblock,sync oflag=sync &>/dev/null
+			dd if=/tmp/test.bin.img of=/io_test/test_${tasks}_${task_size}_${i}.bin.img bs=${task_size} count=1 conv=fsync iflag=fullblock,sync oflag=sync skip=$skip &>/dev/null
+			dd if=/io_test/test_${tasks}_${task_size}_${i}.bin.img of=/dev/null bs=${task_size} iflag=fullblock,sync oflag=sync &>/dev/null
 
 			rm /io_test/test_${tasks}_${task_size}_${i}.bin.img
 		) &
-		echo -n -e "\r\t\t\t$i of $tasks processes are started.            \r"
+		echo -n -e "\r\t\t\t$i of $tasks processes are started.                \r"
 	done
 	local num_children=`ps --no-headers -o pid --ppid=$$ | wc -w`
 	while [ $num_children -gt 1 ]; do
-		echo -n -e "\r\t\t\tWait for $num_children processes.           \r"
+		echo -n -e "\r\t\t\tWait for $num_children processes.                  \r"
 		sleep 0.5
 		num_children=`ps --no-headers -o pid --ppid=$$ | wc -w`
 	done
-	echo -n -e "\r\t\t\t                                               \r\t\t\t"
+	echo -n -e "\r\t\t\t                                                       \r\t\t\t"
 	wait
 	sync
 }
@@ -75,13 +75,18 @@ LOGIT "Test 1 task @100M...\t"
 TEST TEST_100M
 
 for tasks in 10 100 1000 2000; do
+	LOGIT "Test $tasks tasks @1K..."
+	TEST TEST_M $tasks 1024
+done
+
+for tasks in 10 100 1000; do
 	LOGIT "Test $tasks tasks @1M..."
-	TEST TEST_M $tasks 1
+	TEST TEST_M $tasks 1048576
 done
 
 for tasks in 10 100 200 500; do
 	LOGIT "Test $tasks tasks @10M."
-	TEST TEST_M $tasks 10
+	TEST TEST_M $tasks 10485760
 done
 
 rm -rfv /io_test/
