@@ -39,6 +39,10 @@ LOGIT "Fix mail01 (restart exim4)"
 echo -e "\tRestart exim4"
 ssh root-mmroch@mail01 sudo systemctl restart exim4
 
+LOGIT "Fix gitlab (restart gitlab-sidekiq)"
+echo -e "\tRestart gitlab-sidekiq"
+ssh $REMOTE_USER@mail01 sudo systemctl restart gitlab-sidekiq
+
 LOGIT "Reset malicious failed state on legacy vms"
 for host in mail01 sympa ldap01 imap01; do
 	echo -e "\tReset failed state on $host"
