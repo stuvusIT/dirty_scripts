@@ -74,7 +74,7 @@ t_start=$(date +%s)
 LOGIT "Test 1 task @100M...\t"
 TEST TEST_100M
 
-for tasks in 10 100 1000 2000; do
+for tasks in 10 100 1000 2000 5000; do
 	LOGIT "Test $tasks tasks @1K..."
 	TEST TEST_M $tasks 1024
 done
@@ -84,7 +84,7 @@ for tasks in 10 100 1000; do
 	TEST TEST_M $tasks 1048576
 done
 
-for tasks in 10 100 200 500; do
+for tasks in 10 50; do
 	LOGIT "Test $tasks tasks @10M."
 	TEST TEST_M $tasks 10485760
 done
