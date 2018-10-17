@@ -52,3 +52,8 @@ Helper script to close all services using the serial port our hypervisor is atta
 #### `reboot_hypervisor.expect`
 
 Helper script to enter the luks password. This script is invoked by `reboot_hypervisor.sh` which is used by `reboot.sh` and should never be executed directly by the user.
+
+
+#### `test_io.sh`
+
+Simple bash script to test IO performance.
