@@ -42,6 +42,7 @@ function TEST_M {
 
 			rm /io_test/test_${tasks}_${task_size}_${i}.bin.img
 		) &
+		echo -n -e "\r\t\t\t$i of $tasks processes are started.            \r"
 	done
 	local num_children=`ps --no-headers -o pid --ppid=$$ | wc -w`
 	while [ $num_children -gt 1 ]; do
