@@ -12,7 +12,9 @@ git submodule update --recursive --init
 IFS=$'\n'
 for module_str in $(git submodule status); do
 	IFS=' ' read -ra module <<< "$module_str"
-	if echo "${module[2]}"|grep -q "master"; then
+	if [ "${module[0]:0:1}" = "+" ]; then
+		echo -e "\e[3;33m${module[1]}\r\t\t\t\t\t\e[0;1;33m is out of sync\e[0m"
+	elif echo "${module[2]}"|grep -q "master"; then
 		[ -z "$only_neg" ] && echo -e "\e[3;33m${module[1]}\r\t\t\t\t\t\e[0;1;32m is up to date\e[0m"
 	else
 		echo -e "\e[3;33m${module[1]}\r\t\t\t\t\t\e[0;1;31m is not up to date\e[0m"
