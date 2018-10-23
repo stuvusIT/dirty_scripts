@@ -44,6 +44,15 @@ If no argument is given `start` is assumed.
 A script which list and modifies disabled VMs. VMs listed in `/etc/xen/disabled_vms.txt`. You can execute this script right inside this repository.
 
 
+#### `check_stuvus_config_submodule.sh`
+
+Script so check all submodules on our main config repository for updates.
+
+##### Arguments
+
+The commandline switch `-u` can be used to show only modules which are not up to date.
+
+
 #### `reboot_hypervisor.sh`
 
 Helper script to close all services using the serial port our hypervisor is attached to and to execute `reboot_hypervisor.expect`. This invoked by `reboot.sh`, don't execute it directly.

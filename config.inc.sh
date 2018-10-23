@@ -1,2 +1,3 @@
 REMOTE_USER="mmroch"
 HYPERVISOR_IP="129.69.139.17"
+SUBMODULE_TEST_DIR="$BASE_DIR/stuvus_config_test/"
