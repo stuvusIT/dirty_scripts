@@ -9,8 +9,10 @@ cd "$SUBMODULE_TEST_DIR/roles/"
 git submodule update --recursive --init
 for role in *; do
 	cd $role
-	[ "$(git rev-parse HEAD)" = "$(git rev-parse origin/master)" ] &&
-		{ [ -z "$only_neg" ] && echo -e "\e[3;33m$role\r\t\t\t\e[0;1;32m is up to date\e[0m"; true; } ||
+	if [ "$(git rev-parse HEAD)" = "$(git rev-parse origin/master)" ]; then
+		[ -z "$only_neg" ] && echo -e "\e[3;33m$role\r\t\t\t\e[0;1;32m is up to date\e[0m"
+	else
 		echo -e "\e[3;33m$role\r\t\t\t\e[0;1;31m is not up to date\e[0m"
+	fi
 	cd ..
 done
