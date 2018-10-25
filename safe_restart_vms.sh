@@ -95,24 +95,6 @@ function login_iscsi {
 	for vm in *; do
 		sudo systemctl start "vm_iscsi@$vm"
 	done
-
-	LOGIT "manual login into finanzen iscsi devices"
-	ls /dev/disk/by-path/ip-129.69.139.18:3260-iscsi-iqn.2003-01.org.linux-iscsi.storage01.x8664:stuvus-finanzen-data-lun-0 2>/dev/null ||
-		sudo iscsiadm -m node -T iqn.2003-01.org.linux-iscsi.storage01.x8664:stuvus-finanzen-data --login -p 129.69.139.18:3260
-	ls /dev/disk/by-path/ip-129.69.139.18:3260-iscsi-iqn.2003-01.org.linux-iscsi.storage01.x8664:stuvus-finanzen-system-lun-0 2>/dev/null ||
-		sudo iscsiadm -m node -T iqn.2003-01.org.linux-iscsi.storage01.x8664:stuvus-finanzen-system --login -p 129.69.139.18:3260
-
-	for sec in {100..0}; do
-		echo -n -e "\r\tWait $((sec /10)).$((sec %10)) seconds"
-		ls /dev/disk/by-path/ip-129.69.139.18:3260-iscsi-iqn.2003-01.org.linux-iscsi.storage01.x8664:stuvus-finanzen-data-lun-0 &>/dev/null &&
-			ls /dev/disk/by-path/ip-129.69.139.18:3260-iscsi-iqn.2003-01.org.linux-iscsi.storage01.x8664:stuvus-finanzen-system-lun-0 &>/dev/null &&
-			break
-		sleep 0.1
-	done
-	echo -n -e "\r                              \r"
-	ls /dev/disk/by-path/ip-129.69.139.18:3260-iscsi-iqn.2003-01.org.linux-iscsi.storage01.x8664:stuvus-finanzen-data-lun-0 &>/dev/null &&
-		ls /dev/disk/by-path/ip-129.69.139.18:3260-iscsi-iqn.2003-01.org.linux-iscsi.storage01.x8664:stuvus-finanzen-system-lun-0 &>/dev/null ||
-		ERROR "Failed to login into all iSCSI devices!"
 }
 
 function start_vms {
