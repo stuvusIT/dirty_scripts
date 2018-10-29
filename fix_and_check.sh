@@ -20,6 +20,7 @@ done
 
 LOGIT "Restart openvpn services"
 for host in openvpn01 openvpn02; do
+	ssh $REMOTE_USER@$host sudo mount -a
 	if ssh $REMOTE_USER@$host sudo brctl show | grep -q tap; then
 		echo -e "\topenvpn service on $host seems to be okay"
 	else
