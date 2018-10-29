@@ -77,7 +77,7 @@ function logout_iscsi {
 	if [ $(ls ip* 2>/dev/null | wc -l) -gt 0 ]; then
 		LOGIT "logout from all remaining iscsi devices"
 		for disk in `ls ip* 2>/dev/null | grep -v "part[0-9]$" | sed 's/.*\(iqn\..*\)-lun.*/\1/'`; do
-			sudo iscsiadm -m node -T $disk --logout -p 129.69.139.18:3260
+			sudo iscsiadm -m node -T $disk --logout -p 129.69.139.17:3260
 		done
 	fi
 
