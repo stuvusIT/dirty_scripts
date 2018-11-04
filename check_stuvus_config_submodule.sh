@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 BASE_DIR="$( dirname "$( realpath -s "${BASH_SOURCE[0]}" )" )/"
+cd "$BASH_SOURCE"
 source ./config.inc.sh
 
 [ "$1" = "-u" ] && only_neg="true"
