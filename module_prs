@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+
+git submodule foreach git fetch origin/master &> /dev/null
+git reset &> /dev/null
+git checkout master
+git pull
+git submodule foreach git checkout master &> /dev/null
+git submodule foreach git merge &> /dev/null
+for module in $(git status | grep "new commits" | grep -v "untracked content" |cut -d" " -f4); do \
+	module_short=`echo $module|cut -d"/" -f2`
+	COMMITS=`git diff "$module" |grep commit| cut -d" " -f3`
+	cd "./$module"
+	printf "\e[34m\e[1m\n\n\n\n\n==================================================== Changes for $module:\n"
+	MESSAGES=`git log --oneline --format="%s" "$(echo $COMMITS | sed --expression='s/ /../g')" | grep -vi merge`
+	echo $MESSAGES
+	echo $COMMITS | xargs git --no-pager diff
+	cd -
+	read -p "Commit and push module update for "$module" (y/n)? " -n 1 -r
+	echo    # (optional) move to a new line
+	if [[ $REPLY =~ ^[Yy]$ ]]
+	then
+		git add "$module"
+		echo "Update $module_short: $MESSAGES" | git commit -F -
+		git push origin master:update-"$module_short"
+		git reset HEAD~1
+	fi
+done;
+
