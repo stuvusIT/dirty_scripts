@@ -1,0 +1,47 @@
+#!/bin/bash
+# Script to add ECUS tag to the LDAP on our door system
+
+set -e
+set -o nounset
+
+read -p "Tag ID:     " id
+
+# Ensure tag doesn't exist yet
+set +e
+oldTag="$(ldapsearch -o ldif-wrap=no -Y EXTERNAL -H ldapi:/// -b "tuerTagId=${id},ou=tags,dc=nili-tuer" 2>/dev/null)"
+if [ "${?}" = 0 ]; then
+        set -e
+        uid="$(echo "${oldTag}" | grep ^tuerTagOwnerUid | cut -d' ' -f2-)"
+        user="$(ldapsearch -o ldif-wrap=no -Y EXTERNAL -H ldapi:/// -b "uid=${uid},ou=users,dc=nili-tuer" cn 2>/dev/null | grep ^cn: | cut -d' ' -f2-)"
+        echo "Tag is already owned by ${user} ${uid}"
+        exit 5
+fi
+set -e
+
+# Ensure user exists
+read -p "Username:   " uid
+set +e
+user="$(ldapsearch -o ldif-wrap=no -Y EXTERNAL -H ldapi:/// -b "uid=${uid},ou=users,dc=nili-tuer" 2>/dev/null)"
+if [ "${?}" != 0 ]; then
+        set -e
+        echo "User does not yet exist, creating..."
+        read -p "First name: " givenName
+        read -p "Surname:    " surname
+        echo "dn: uid=${uid},ou=users,dc=nili-tuer
+cn: ${givenName} ${surname}
+sn: ${surname}
+givenName: ${givenName}
+uid: ${uid}
+objectClass: inetOrgPerson
+objectClass: tuerUser
+tuerAccessPerm: nili-tuer true" | ldapadd -Y EXTERNAL -H ldapi:/// &>/dev/null
+fi
+set -e
+set -x
+
+# Create tag
+echo "dn: tuerTagId=${id},ou=tags,dc=nili-tuer
+objectClass: tuerEcusTag
+tuerTagOwnerUid: ${uid}
+tuerTagId: ${id}" | ldapadd -Y EXTERNAL -H ldapi:/// &>/dev/null
+
