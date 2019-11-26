@@ -66,3 +66,10 @@ Helper script to enter the luks password. This script is invoked by `reboot_hype
 #### `test_io.sh`
 
 Simple bash script to test IO performance.
+
+#### list_badges.sh
+
+Bash script which lists scanned tags on door01 with Date and Timestamp
+takes two arguments, lines and pattern
+`list_badges 100 new` -> lists all the tags which are not known users in the last 100 scanned tags
+
