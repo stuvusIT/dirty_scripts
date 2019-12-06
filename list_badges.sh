@@ -9,13 +9,13 @@ fi
 
 if [ $pattern == "new" ]
 then 
-tail -n $lines /var/local/entman01.history | grep 'Unknown' | jq '.time,.token' | awk '{ if (NR%2==0) printf "echo ID: "$1"\\n"; else print "\n echo Date: && date +%Y-%m-%e_%k:%M:%S -d @" $1"&& echo "$1;}' | sh
+tail -n $lines /var/local/entman01.history | grep 'Unknown' | jq '.time,.token' | awk '{ if (NR%2==0) printf "echo ID: "$1"\n"; else print "\n echo Date: && date +%Y-%m-%e_%k:%M:%S -d @" $1"&& echo "$1;}' | sh
 exit 0
 fi
 
 if [ $pattern == "all" ]
 then 
-tail -n $lines /var/local/entman01.history | jq '.time,.token' | awk '{ if (NR%2==0) printf "echo ID: "$1"\\n"; else print "\n echo Date: && date +%Y-%m-%e_%k:%M:%S -d @" $1"&& echo "$1;}' | sh
+tail -n $lines /var/local/entman01.history | jq '.time,.token' | awk '{ if (NR%2==0) printf "echo ID: "$1"\n"; else print "\n echo Date: && date +%Y-%m-%e_%k:%M:%S -d @" $1"&& echo "$1;}' | sh
 exit 0
 fi
 exit 1
