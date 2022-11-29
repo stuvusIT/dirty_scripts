@@ -86,6 +86,7 @@ class Backuper:
         _run(self._restic_cmd(restic_repo, "check"))
 
     def _pre(self, dataset_name):
+        _run(f"zfs mount {dataset_name}")
         restic_repo, _ = self._get_repo_name_and_path(dataset_name)
         self._init_restic_repo(restic_repo)
 
