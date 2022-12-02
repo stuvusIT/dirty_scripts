@@ -10,6 +10,7 @@ import json
 ZFS_SNAPSHOTDIR = '.zfs/snapshot'
 
 SNAPSHOT_TAG = "snapshot="
+LOGICAL_REFERENCE_TAG = "logicalreferenced="
 
 DEBUG = False
 
@@ -66,6 +67,10 @@ class Backuper:
         result = _eval(f"sudo zfs list -Hp -o used -t snapshot '{dataset_name}@{snapshot_name}'")
         return int(result)
 
+    def _get_zfs_snapshot_logical_refrence_size(self, dataset_name: str, snapshot_name: str) -> int:
+        result = _eval(f"sudo zfs get logicalreferenced '{dataset_name}@{snapshot_name}' -Hpo value")
+        return int(result)
+
     def _get_repo_name_and_path(self, dataset_name) -> Tuple[str, str]:
         ds_name_without_prefix = dataset_name.removeprefix(self.zfs_dataset_common_prefix).strip("/")
         repo_name = "/".join([self.restic_repo_prefix, ds_name_without_prefix])
@@ -106,7 +111,13 @@ class Backuper:
 
         # Use proot to "mount" coorect path. See https://github.com/restic/restic/issues/2092
         proot_command = f"proot -b '{snapshot_path}':'{path_in_restic_repo}'"
-        restic_backup_args = ["--ignore-ctime", "--time", snapshot_time_readble, "--tag", f"{SNAPSHOT_TAG}{snapshot_name}"]
+        tags = [f"{SNAPSHOT_TAG}{snapshot_name}",
+                f"{LOGICAL_REFERENCE_TAG}{self._get_zfs_snapshot_logical_refrence_size(dataset_name, snapshot_name)}"]
+        tags_with_flag = []
+        for tag in tags:
+            tags_with_flag.append("--tag")
+            tags_with_flag.append(tag)
+        restic_backup_args = ["--ignore-ctime", "--time", snapshot_time_readble] + tags_with_flag
         if parent_restic_snapshot is not None:
             restic_backup_args += ["--parent", parent_restic_snapshot]
         restic_backup_args.append(path_in_restic_repo)
