@@ -29,6 +29,22 @@ def _eval(command: str, input: Optional[str] = None, void_stderr: bool = False) 
     return subprocess.run(command, shell=True, text=True, stdout=subprocess.PIPE, input=input, **other_args).stdout
 
 
+def _get_year(date: str) -> int:
+    return int(date[:4])
+
+
+def _get_month(date: str) -> int:
+    return int(date[4:6])
+
+
+def _get_day(date: str) -> int:
+    return int(date[6:8])
+
+
+def _get_week(date: str) -> int:
+    return datetime.date(_get_year(date), _get_month(date), _get_day(date)).isocalendar()[1]
+
+
 class Backuper:
 
     def __init__(self,
@@ -141,21 +157,71 @@ class Backuper:
         snapshots.sort()
         return snapshots[-1]
 
-    def _find_next_snapshot(self, dataset_name: str, snapshots: List[str], newest_snapshot_in_restic: str) -> Optional[str]:
-        oldest_found = None
+    def _is_snapshot_in_tail_of_list(self, snapshots_to_consider: List[str], snapshot: str, tail_size: int):
+        snapshots_to_consider.sort()
+        last_index = snapshots_to_consider.index(snapshot)
+        if last_index >= len(snapshots_to_consider) - tail_size:
+            return True
+
+    def _is_weekly(self, snapshots: List[str], snapshot: str) -> bool:
+        year = _get_year(snapshot)
+        week = _get_week(snapshot)
+        snapshots_in_that_week = [snapshot for snapshot in snapshots if _get_week(snapshot) == week and _get_year(snapshot) == year]
+        snapshots_in_that_week.sort()
+        return snapshot == snapshots_in_that_week[-1]
+
+    def _is_monthly(self, snapshots: List[str], snapshot: str) -> bool:
+        year = _get_year(snapshot)
+        month = _get_month(snapshot)
+        snapshots_in_that_month = [snapshot for snapshot in snapshots if _get_month(snapshot) == month and _get_year(snapshot) == year]
+        snapshots_in_that_month.sort()
+        return snapshot == snapshots_in_that_month[-1]
+
+    def _must_keep(self, snapshots: List[str], snapshot: str, keep_last_n: Optional[int], keep_weekly_n: Optional[int], keep_monthly_n: Optional[int]) -> bool:
+        # Last n
+        if keep_last_n is None:
+            return True
+        if self._is_snapshot_in_tail_of_list(snapshots, snapshot, keep_last_n):
+            return True
+
+        # Weekly n
+        if self._is_weekly(snapshots, snapshot):
+            # This is a weekly snapshot
+            if keep_weekly_n is None:
+                return True
+            weekly_snapshots = [snapshot for snapshot in snapshots if self._is_weekly(snapshots, snapshot)]
+            if self._is_snapshot_in_tail_of_list(weekly_snapshots, snapshot, keep_weekly_n):
+                return True
+
+        # Monthly n
+        if self._is_monthly(snapshots, snapshot):
+            # This is a monthly snapshot
+            if keep_monthly_n is None:
+                return True
+            monthly_snapshots = [snapshot for snapshot in snapshots if self._is_monthly(snapshots, snapshot)]
+            if self._is_snapshot_in_tail_of_list(monthly_snapshots, snapshot, keep_monthly_n):
+                return True
+
+        return False
+
+    def _find_next_snapshot(self, dataset_name: str, snapshots: List[str], newest_snapshot_in_restic: str,
+                            keep_last_n: Optional[int], keep_weekly_n: Optional[int], keep_monthly_n: Optional[int]) -> Optional[str]:
+        snapshots.sort()
+        snapshots_with_size = [snapshot for snapshot in snapshots if self._get_zfs_snapshot_size(dataset_name, snapshot) != 0]
         for snapshot in snapshots:
             if snapshot <= newest_snapshot_in_restic:
-                continue
-            if oldest_found is not None and snapshot > oldest_found:
-                # snapshot is newer than another we found
+                # We have that already (or skipped it)
                 continue
             if self._get_zfs_snapshot_size(dataset_name, snapshot) == 0:
                 print(F"Skipping snapshot {dataset_name}@{snapshot} because of zero size.")
                 continue
-            oldest_found = snapshot
-        return oldest_found
+            if not self._must_keep(snapshots_with_size, snapshot, keep_last_n, keep_weekly_n, keep_monthly_n):
+                print(F"Skipping snapshot {dataset_name}@{snapshot} because it does not need to be kept according to the keep pattern.")
+                continue
+            return snapshot
+        return None
 
-    def _backup_next_snapshot_from_dataset(self, dataset_name) -> bool:
+    def _backup_next_snapshot_from_dataset(self, dataset_name, keep_last_n: Optional[int], keep_weekly_n: Optional[int], keep_monthly_n: Optional[int]) -> bool:
         restic_repo, _ = self._get_repo_name_and_path(dataset_name)
 
         snapshots = self._get_dataset_snapshots(dataset_name)
@@ -165,25 +231,25 @@ class Backuper:
         if len(snapshots_in_restic) > 0:
             newest_snapshot_in_restic = self._find_newest_snapshot_in_restic(snapshots_in_restic)
             parent_restic_snapshot = snapshots_in_restic[newest_snapshot_in_restic]
-        snapshot = self._find_next_snapshot(dataset_name, snapshots, newest_snapshot_in_restic)
+        snapshot = self._find_next_snapshot(dataset_name, snapshots, newest_snapshot_in_restic, keep_last_n, keep_weekly_n, keep_monthly_n)
         if snapshot is None:
             print(f"No further snapshots need to backuped for {dataset_name}.")
             return False
         self._backup_single_snapshot(dataset_name, snapshot, parent_restic_snapshot)
         return True
 
-    def backup_next_snapshot_from_dataset(self, dataset_name):
+    def backup_next_snapshot_from_dataset(self, dataset_name, keep_last_n: Optional[int], keep_weekly_n: Optional[int], keep_monthly_n: Optional[int]):
         self._pre(dataset_name)
-        self._backup_next_snapshot_from_dataset(dataset_name)
+        self._backup_next_snapshot_from_dataset(dataset_name, keep_last_n, keep_weekly_n, keep_monthly_n)
         self._post(dataset_name)
 
-    def _backup_dataset(self, dataset_name: str):
-        while self._backup_next_snapshot_from_dataset(dataset_name):
+    def _backup_dataset(self, dataset_name: str, keep_last_n: Optional[int], keep_weekly_n: Optional[int], keep_monthly_n: Optional[int]):
+        while self._backup_next_snapshot_from_dataset(dataset_name, keep_last_n, keep_weekly_n, keep_monthly_n):
             pass
 
-    def backup_dataset(self, dataset_name: str):
+    def backup_dataset(self, dataset_name: str, keep_last_n: Optional[int], keep_weekly_n: Optional[int], keep_monthly_n: Optional[int]):
         self._pre(dataset_name)
-        self._backup_dataset(dataset_name)
+        self._backup_dataset(dataset_name, keep_last_n, keep_weekly_n, keep_monthly_n)
         self._post(dataset_name)
 
 
@@ -213,11 +279,23 @@ def main():
 
     parser_next_snapshot = subparsers.add_parser('next_snapshot_in_dataset', help='Backup the next snapshots of a dataset')
     parser_next_snapshot.add_argument('dataset_name',
-                                       help="The name of the dataset to backup.")
+                                      help="The name of the dataset to backup.")
+    parser_next_snapshot.add_argument('--keep-last-n', default=None, type=int,
+                                      help="Keep the last n snapshots. Defaults to all")
+    parser_next_snapshot.add_argument('--keep-weekly-n', default=None, type=int,
+                                      help="Keep the last n weekly snapshots. A weekly snapshot is the newest snapshot in a week. Defaults to all")
+    parser_next_snapshot.add_argument('--keep-monthly-n', default=None, type=int,
+                                      help="Keep the last n monthly snapshots. A monthly snapshot is the newest snapshot in a month. Defaults to all")
 
     parser_single_dataset = subparsers.add_parser('dataset', help='Backup all snapshots of a dataset')
     parser_single_dataset.add_argument('dataset_name',
                                        help="The name of the dataset to backup.")
+    parser_single_dataset.add_argument('--keep-last-n', default=None, type=int,
+                                       help="Keep the last n snapshots. Defaults to all")
+    parser_single_dataset.add_argument('--keep-weekly-n', default=None, type=int,
+                                       help="Keep the last n weekly snapshots. A weekly snapshot is the newest snapshot in a week. Defaults to all")
+    parser_single_dataset.add_argument('--keep-monthly-n', default=None, type=int,
+                                       help="Keep the last n monthly snapshots. A monthly snapshot is the newest snapshot in a month. Defaults to all")
 
     args = parser.parse_args()
 
@@ -228,9 +306,9 @@ def main():
             print("Caution: No parent specified. This can greatly reduce performance.")
         backuper.backup_single_snapshot(dataset_name=args.dataset_name, snapshot_name=args.snapshot_name, parent_restic_snapshot=args.parent_snapshot)
     elif args.subparser_name == "next_snapshot_in_dataset":
-        backuper.backup_next_snapshot_from_dataset(dataset_name=args.dataset_name)
+        backuper.backup_next_snapshot_from_dataset(dataset_name=args.dataset_name, keep_last_n=args.keep_last_n, keep_weekly_n=args.keep_weekly_n, keep_monthly_n=args.keep_monthly_n)
     elif args.subparser_name == "dataset":
-        backuper.backup_dataset(dataset_name=args.dataset_name)
+        backuper.backup_dataset(dataset_name=args.dataset_name, keep_last_n=args.keep_last_n, keep_weekly_n=args.keep_weekly_n, keep_monthly_n=args.keep_monthly_n)
 
 
 if __name__ == "__main__":
