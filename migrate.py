@@ -117,7 +117,7 @@ class Backuper:
         for tag in tags:
             tags_with_flag.append("--tag")
             tags_with_flag.append(tag)
-        restic_backup_args = ["--ignore-ctime", "--time", snapshot_time_readble] + tags_with_flag
+        restic_backup_args = ["--ignore-ctime", "--time", snapshot_time_readble, "--compression", "max"] + tags_with_flag
         if parent_restic_snapshot is not None:
             restic_backup_args += ["--parent", parent_restic_snapshot]
         restic_backup_args.append(path_in_restic_repo)
