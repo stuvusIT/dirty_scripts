@@ -153,11 +153,6 @@ class Backuper:
         self._backup_single_snapshot(dataset_name, snapshot_name, parent_restic_snapshot)
         self._post(dataset_name)
 
-    def _find_newest_snapshot_in_restic(self, snapshots_in_restic: Dict[str, str]):
-        snapshots = list(snapshots_in_restic.keys())
-        snapshots.sort()
-        return snapshots[-1]
-
     def _is_snapshot_in_tail_of_list(self, snapshots_to_consider: List[str], snapshot: str, tail_size: int):
         snapshots_to_consider.sort()
         last_index = snapshots_to_consider.index(snapshot)
@@ -205,50 +200,55 @@ class Backuper:
 
         return False
 
-    def _find_next_snapshot(self, dataset_name: str, snapshots: List[str], newest_snapshot_in_restic: str,
+    def _find_next_snapshot(self, dataset_name: str, snapshots: List[str], snapshots_in_restic: Dict[str, str], larger_than: str,
                             keep_last_n: Optional[int], keep_weekly_n: Optional[int], keep_monthly_n: Optional[int]) -> Optional[str]:
         snapshots.sort()
         snapshots_with_size = [snapshot for snapshot in snapshots if self._get_zfs_snapshot_size(dataset_name, snapshot) != 0]
         for snapshot in snapshots:
-            if snapshot <= newest_snapshot_in_restic:
+            if snapshot <= larger_than:
                 # We have that already (or skipped it)
                 continue
             if self._get_zfs_snapshot_size(dataset_name, snapshot) == 0:
                 print(F"Skipping snapshot {dataset_name}@{snapshot} because of zero size.")
                 continue
             if not self._must_keep(snapshots_with_size, snapshot, keep_last_n, keep_weekly_n, keep_monthly_n):
-                print(F"Skipping snapshot {dataset_name}@{snapshot} because it does not need to be kept according to the keep pattern.")
+                print(F"Skipping snapshot {dataset_name}@{snapshot} because it does not need to be kept according to the policy.")
+                continue
+            if snapshot in snapshots_in_restic:
+                print(F"Skipping snapshot {dataset_name}@{snapshot} because it's already migrated.")
                 continue
             return snapshot
         return None
 
-    def _backup_next_snapshot_from_dataset(self, dataset_name, keep_last_n: Optional[int], keep_weekly_n: Optional[int], keep_monthly_n: Optional[int]) -> bool:
+    def _backup_next_snapshot_from_dataset(self, dataset_name, larger_than: str, keep_last_n: Optional[int], keep_weekly_n: Optional[int], keep_monthly_n: Optional[int]) -> bool:
         restic_repo, _ = self._get_repo_name_and_path(dataset_name)
 
         snapshots = self._get_dataset_snapshots(dataset_name)
         snapshots_in_restic = self._get_snapshots_in_restic(restic_repo)
         if self.dry_run:
             snapshots_in_restic.update(self._dry_run_finished_backups)
-        parent_restic_snapshot = None
-        newest_snapshot_in_restic = "00000000"
-        if len(snapshots_in_restic) > 0:
-            newest_snapshot_in_restic = self._find_newest_snapshot_in_restic(snapshots_in_restic)
-            parent_restic_snapshot = snapshots_in_restic[newest_snapshot_in_restic]
-        snapshot = self._find_next_snapshot(dataset_name, snapshots, newest_snapshot_in_restic, keep_last_n, keep_weekly_n, keep_monthly_n)
+
+        snapshot = self._find_next_snapshot(dataset_name, snapshots, snapshots_in_restic, larger_than, keep_last_n, keep_weekly_n, keep_monthly_n)
         if snapshot is None:
             print(f"No further snapshots need to backuped for {dataset_name}.")
-            return False
-        self._backup_single_snapshot(dataset_name, snapshot, parent_restic_snapshot)
-        return True
+            return None
 
-    def backup_next_snapshot_from_dataset(self, dataset_name, keep_last_n: Optional[int], keep_weekly_n: Optional[int], keep_monthly_n: Optional[int]):
+        parent_restic_snapshot = None
+        ancestors_in_restic = [ancestor for ancestor in snapshots_in_restic if ancestor < snapshot]
+        if len(ancestors_in_restic) > 0:
+            parent_restic_snapshot = snapshots_in_restic[max(ancestors_in_restic)]
+        self._backup_single_snapshot(dataset_name, snapshot, parent_restic_snapshot)
+        return snapshot
+
+    def backup_next_snapshot_from_dataset(self, dataset_name, larger_than: str, keep_last_n: Optional[int], keep_weekly_n: Optional[int], keep_monthly_n: Optional[int]):
         self._pre(dataset_name)
-        self._backup_next_snapshot_from_dataset(dataset_name, keep_last_n, keep_weekly_n, keep_monthly_n)
+        self._backup_next_snapshot_from_dataset(dataset_name, larger_than, keep_last_n, keep_weekly_n, keep_monthly_n)
         self._post(dataset_name)
 
     def _backup_dataset(self, dataset_name: str, keep_last_n: Optional[int], keep_weekly_n: Optional[int], keep_monthly_n: Optional[int]):
-        while self._backup_next_snapshot_from_dataset(dataset_name, keep_last_n, keep_weekly_n, keep_monthly_n):
-            pass
+        larger_than = "0"
+        while larger_than is not None:
+            larger_than = self._backup_next_snapshot_from_dataset(dataset_name, larger_than, keep_last_n, keep_weekly_n, keep_monthly_n)
 
     def backup_dataset(self, dataset_name: str, keep_last_n: Optional[int], keep_weekly_n: Optional[int], keep_monthly_n: Optional[int]):
         self._pre(dataset_name)
