@@ -34,10 +34,12 @@ class Backuper:
     def __init__(self,
                  restic_repo_prefix: str,
                  zfs_dataset_common_prefix: str,
-                 restic_password_file: str):
+                 restic_password_file: str,
+                 dry_run: bool):
         self.restic_repo_prefix: str = restic_repo_prefix.rstrip("/")
         self.zfs_dataset_common_prefix: str = zfs_dataset_common_prefix
         self.restic_password_file: str = restic_password_file
+        self.dry_run: bool = dry_run
 
     def _restic_cmd(self, restic_repo: str, restic_command: str, flags: List[str] = []) -> str:
         initial_args = ["-r", restic_repo, "--password-file", self.restic_password_file, restic_command]
@@ -123,7 +125,11 @@ class Backuper:
         restic_backup_args.append(path_in_restic_repo)
         restic_command = self._restic_cmd(restic_repo, "backup", restic_backup_args)
         print(f"Starting backup of {dataset_name}@{snapshot_name} into {restic_repo} under {path_in_restic_repo}")
-        _run(f"{proot_command} {restic_command}")
+        if self.dry_run:
+            print(f"Would run: {proot_command} {restic_command}")
+        else:
+            _run(f"{proot_command} {restic_command}")
+
 
     def backup_single_snapshot(self, dataset_name: str, snapshot_name: str, parent_restic_snapshot: Optional[str]):
         self._pre(dataset_name)
@@ -192,6 +198,8 @@ def main():
                         help='The prefix which should be removed from each dataset name for use in the restic repo. Eg. backup01')
     parser.add_argument('-p', '--restic-password-file', required=True,
                         help='The path to the restic password file.')
+    parser.add_argument('--dry-run', required=False, action='store_true',
+                        help='Perform a dryrun, do not backup anything.')
 
     subparsers = parser.add_subparsers(title='commands', description="The command to run", required=True, dest='subparser_name')
 
@@ -213,7 +221,7 @@ def main():
 
     args = parser.parse_args()
 
-    backuper = Backuper(restic_repo_prefix=args.restic_repo_prefix, zfs_dataset_common_prefix=args.zfs_dataset_common_prefix, restic_password_file=args.restic_password_file)
+    backuper = Backuper(restic_repo_prefix=args.restic_repo_prefix, zfs_dataset_common_prefix=args.zfs_dataset_common_prefix, restic_password_file=args.restic_password_file, dry_run=args.dry_run)
 
     if args.subparser_name == "single_snapshot":
         if args.parent_snapshot is None:
