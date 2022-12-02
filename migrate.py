@@ -56,6 +56,7 @@ class Backuper:
         self.zfs_dataset_common_prefix: str = zfs_dataset_common_prefix
         self.restic_password_file: str = restic_password_file
         self.dry_run: bool = dry_run
+        self._dry_run_finished_backups: Dict[str, str] = dict()
 
     def _restic_cmd(self, restic_repo: str, restic_command: str, flags: List[str] = []) -> str:
         initial_args = ["-r", restic_repo, "--password-file", self.restic_password_file, restic_command]
@@ -143,9 +144,9 @@ class Backuper:
         print(f"Starting backup of {dataset_name}@{snapshot_name} into {restic_repo} under {path_in_restic_repo}")
         if self.dry_run:
             print(f"Would run: {proot_command} {restic_command}")
+            self._dry_run_finished_backups[snapshot_name] = "__dry_run__"
         else:
             _run(f"{proot_command} {restic_command}")
-
 
     def backup_single_snapshot(self, dataset_name: str, snapshot_name: str, parent_restic_snapshot: Optional[str]):
         self._pre(dataset_name)
@@ -226,6 +227,8 @@ class Backuper:
 
         snapshots = self._get_dataset_snapshots(dataset_name)
         snapshots_in_restic = self._get_snapshots_in_restic(restic_repo)
+        if self.dry_run:
+            snapshots_in_restic.update(self._dry_run_finished_backups)
         parent_restic_snapshot = None
         newest_snapshot_in_restic = "00000000"
         if len(snapshots_in_restic) > 0:
