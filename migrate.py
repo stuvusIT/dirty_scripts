@@ -53,7 +53,7 @@ class Backuper:
         self.zfs_dataset_common_prefix: str = zfs_dataset_common_prefix
         self.restic_password_file: str = restic_password_file
         self.dry_run: bool = dry_run
-        self._dry_run_finished_backups = []
+        self._dry_run_finished_backups: List[Dict[str, Any]] = []
 
     def _restic_cmd(self, restic_repo: str, restic_command: str, flags: List[str] = []) -> str:
         initial_args = ["-r", restic_repo, "--password-file", self.restic_password_file, restic_command]
@@ -61,25 +61,26 @@ class Backuper:
         arg_string = " ".join([f"'{arg}'" for arg in args])
         return f"restic {arg_string}"
 
-    def _get_dataset_snapshots(self, dataset_name: str) -> List[str]:
+    def _get_dataset_snapshots(self, dataset_name: str) -> List[Dict[str, Any]]:
         lines = _eval(f"sudo zfs list -Hp -o name,creation,used,logicalreferenced -t snapshot '{dataset_name}'")
-        snapshots = []
+        snapshots: List[Dict[str, Any]] = []
         for line in lines.split("\n"):
             if len(line) == 0:
                 continue
             values = line.split("\t")
-            snapshots.append({
+            snapshot: Dict[str, Any] = {
                 "name": values[0].split("@")[-1],
                 "creation": int(values[1]),
                 "used": int(values[2]),
                 "logicalreferenced": int(values[3]),
-            })
+            }
+            snapshots.append(snapshot)
         snapshots_with_size = []
         for i, snapshot in enumerate(snapshots):
-            if i == 0 or snapshots[i-1]["used"] != 0:
+            if i == 0 or snapshots[i - 1]["used"] != 0:
                 snapshots_with_size.append(snapshot)
                 continue
-            parent_name = snapshots[i-1]["name"]
+            parent_name = snapshots[i - 1]["name"]
             snapshot_name = snapshot["name"]
             if "0\n" != _eval(f"zfs diff {dataset_name}@{parent_name} {dataset_name}@{snapshot_name} 2>&1 | head -c1 | wc -c"):
                 snapshots_with_size.append(snapshot)
@@ -95,7 +96,7 @@ class Backuper:
                 return tag[len(SNAPSHOT_TAG):]
         raise Exception("Snapshot does not have a valid snapshot tag.")
 
-    def _get_snapshots_in_restic(self, restic_repo: str) -> List[Dict[str, str]]:
+    def _get_snapshots_in_restic(self, restic_repo: str) -> List[Dict[str, Any]]:
         json_data = _eval(self._restic_cmd(restic_repo, "snapshots", ["--json"]))
         data = json.loads(json_data)
         return [{
@@ -132,7 +133,7 @@ class Backuper:
         restic_repo, _ = self._get_repo_name_and_path(dataset_name)
         self._check_restic_repo(restic_repo)
 
-    def _backup_single_snapshot(self, dataset_name: str, snapshot: Dict[str, str], parent_restic_snapshot_id: Optional[str]):
+    def _backup_single_snapshot(self, dataset_name: str, snapshot: Dict[str, Any], parent_restic_snapshot_id: Optional[str]):
         snapshot_name = snapshot["name"]
         restic_repo, path_in_restic_repo = self._get_repo_name_and_path(dataset_name)
 
@@ -169,26 +170,30 @@ class Backuper:
 
     def backup_single_snapshot(self, dataset_name: str, snapshot_name: str, parent_restic_snapshot_id: Optional[str]):
         self._pre(dataset_name)
-        self._backup_single_snapshot(dataset_name, snapshot_name, parent_restic_snapshot_id)
+        snapshots = self._get_dataset_snapshots(dataset_name)
+        snapshots_with_correct_name = [snapshot for snapshot in snapshots if snapshot["name"] == snapshot_name]
+        if len(snapshots_with_correct_name) < 1:
+            raise Exception("Did not find a snapshot with that name")
+        self._backup_single_snapshot(dataset_name, snapshots_with_correct_name[0], parent_restic_snapshot_id)
         self._post(dataset_name)
 
-    def _is_among_n_newest(self, snapshots_to_consider: List[str], snapshot: str, n: int):
+    def _is_among_n_newest(self, snapshots_to_consider: List[Dict[str, Any]], snapshot: Dict[str, Any], n: int):
         num_newer = sum(s["creation"] > snapshot["creation"] for s in snapshots_to_consider)
         return num_newer < n
 
-    def _is_weekly(self, snapshots: List[str], snapshot: str) -> bool:
+    def _is_weekly(self, snapshots: List[Dict[str, Any]], snapshot: Dict[str, Any]) -> bool:
         year = _get_year(snapshot["creation"])
         week = _get_week(snapshot["creation"])
         snapshots_in_that_week = [snapshot for snapshot in snapshots if _get_week(snapshot["creation"]) == week and _get_year(snapshot["creation"]) == year]
         return self._is_among_n_newest(snapshots_in_that_week, snapshot, 1)
 
-    def _is_monthly(self, snapshots: List[str], snapshot: str) -> bool:
+    def _is_monthly(self, snapshots: List[Dict[str, Any]], snapshot: Dict[str, Any]) -> bool:
         year = _get_year(snapshot["creation"])
         month = _get_month(snapshot["creation"])
         snapshots_in_that_month = [snapshot for snapshot in snapshots if _get_month(snapshot["creation"]) == month and _get_year(snapshot["creation"]) == year]
         return self._is_among_n_newest(snapshots_in_that_month, snapshot, 1)
 
-    def _must_keep(self, snapshots: List[str], snapshot: str, keep_last_n: Optional[int], keep_weekly_n: Optional[int], keep_monthly_n: Optional[int]) -> bool:
+    def _must_keep(self, snapshots: List[Dict[str, Any]], snapshot: Dict[str, Any], keep_last_n: Optional[int], keep_weekly_n: Optional[int], keep_monthly_n: Optional[int]) -> bool:
         # Last n
         if keep_last_n is None:
             return True
@@ -215,8 +220,8 @@ class Backuper:
 
         return False
 
-    def _find_next_snapshot(self, dataset_name: str, snapshots: List[Dict[str, str]], snapshots_in_restic: Dict[str, str],
-                            keep_last_n: Optional[int], keep_weekly_n: Optional[int], keep_monthly_n: Optional[int]) -> Optional[str]:
+    def _find_next_snapshot(self, dataset_name: str, snapshots: List[Dict[str, Any]], snapshots_in_restic: List[Dict[str, Any]],
+                            keep_last_n: Optional[int], keep_weekly_n: Optional[int], keep_monthly_n: Optional[int]) -> Optional[Dict[str, Any]]:
         """
         `snapshots` must be sorted by creation time.
         """
@@ -232,7 +237,7 @@ class Backuper:
             return snapshot
         return None
 
-    def _backup_next_snapshot_from_dataset(self, dataset_name, snapshots: List[Dict[str, str]], keep_last_n: Optional[int], keep_weekly_n: Optional[int], keep_monthly_n: Optional[int]) -> bool:
+    def _backup_next_snapshot_from_dataset(self, dataset_name, snapshots: List[Dict[str, Any]], keep_last_n: Optional[int], keep_weekly_n: Optional[int], keep_monthly_n: Optional[int]) -> Optional[Dict[str, Any]]:
         restic_repo, _ = self._get_repo_name_and_path(dataset_name)
 
         snapshots_in_restic = self._get_snapshots_in_restic(restic_repo)
@@ -264,7 +269,7 @@ class Backuper:
             if added_snapshot is None:
                 break
             index = snapshots.index(added_snapshot)
-            snapshots = snapshots[index+1:]
+            snapshots = snapshots[index + 1:]
 
     def backup_dataset(self, dataset_name: str, keep_last_n: Optional[int], keep_weekly_n: Optional[int], keep_monthly_n: Optional[int]):
         self._pre(dataset_name)
