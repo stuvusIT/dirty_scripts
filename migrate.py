@@ -11,7 +11,7 @@ import udatetime
 ZFS_SNAPSHOTDIR = '.zfs/snapshot'
 
 SNAPSHOT_TAG = "snapshot="
-LOGICAL_REFERENCE_TAG = "logicalreferenced="
+LOGICAL_REFERENCED_TAG = "logicalreferenced="
 
 DEBUG = False
 
@@ -145,7 +145,7 @@ class Backuper:
         proot_command = f"proot -b '{snapshot_path}':'{path_in_restic_repo}'"
         logical_referenced = snapshot["logicalreferenced"]
         tags = [f"{SNAPSHOT_TAG}{snapshot_name}",
-                f"{LOGICAL_REFERENCE_TAG}{logical_referenced}"]
+                f"{LOGICAL_REFERENCED_TAG}{logical_referenced}"]
         tags_with_flag = []
         for tag in tags:
             tags_with_flag.append("--tag")
