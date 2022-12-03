@@ -194,26 +194,23 @@ class Backuper:
         return self._is_among_n_newest(snapshots_in_that_month, snapshot, 1)
 
     def _must_keep(self, snapshots: List[Dict[str, Any]], snapshot: Dict[str, Any], keep_last_n: Optional[int], keep_weekly_n: Optional[int], keep_monthly_n: Optional[int]) -> bool:
-        # Last n
-        if keep_last_n is None:
+        if keep_last_n is None and keep_weekly_n is None and keep_monthly_n is None:
             return True
-        if self._is_among_n_newest(snapshots, snapshot, keep_last_n):
+
+        # Last n
+        if keep_last_n is not None and self._is_among_n_newest(snapshots, snapshot, keep_last_n):
             return True
 
         # Weekly n
-        if self._is_weekly(snapshots, snapshot):
+        if keep_weekly_n is not None and self._is_weekly(snapshots, snapshot):
             # This is a weekly snapshot
-            if keep_weekly_n is None:
-                return True
             weekly_snapshots = [snapshot for snapshot in snapshots if self._is_weekly(snapshots, snapshot)]
             if self._is_among_n_newest(weekly_snapshots, snapshot, keep_weekly_n):
                 return True
 
         # Monthly n
-        if self._is_monthly(snapshots, snapshot):
+        if keep_monthly_n is not None and self._is_monthly(snapshots, snapshot):
             # This is a monthly snapshot
-            if keep_monthly_n is None:
-                return True
             monthly_snapshots = [snapshot for snapshot in snapshots if self._is_monthly(snapshots, snapshot)]
             if self._is_among_n_newest(monthly_snapshots, snapshot, keep_monthly_n):
                 return True
