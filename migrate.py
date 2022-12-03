@@ -74,7 +74,18 @@ class Backuper:
                 "used": int(values[2]),
                 "logicalreferenced": int(values[3]),
             })
-        return snapshots
+        snapshots_with_size = []
+        for i, snapshot in enumerate(snapshots):
+            if i == 0 or snapshots[i-1]["used"] != 0:
+                snapshots_with_size.append(snapshot)
+                continue
+            parent_name = snapshots[i-1]["name"]
+            snapshot_name = snapshot["name"]
+            if "0\n" != _eval(f"zfs diff {dataset_name}@{parent_name} {dataset_name}@{snapshot_name} 2>&1 | head -c1 | wc -c"):
+                snapshots_with_size.append(snapshot)
+                continue
+            print(F"Not considering snapshot {dataset_name}@{snapshot_name} because of zero diff.")
+        return snapshots_with_size
 
     def _get_snapshot_tag(self, datum: Dict[str, Any]) -> str:
         tags = datum["tags"]
@@ -161,28 +172,27 @@ class Backuper:
         self._backup_single_snapshot(dataset_name, snapshot_name, parent_restic_snapshot_id)
         self._post(dataset_name)
 
-    def _is_snapshot_in_tail_of_list(self, snapshots_to_consider: List[str], snapshot: str, tail_size: int):
-        last_index = snapshots_to_consider.index(snapshot)
-        if last_index >= len(snapshots_to_consider) - tail_size:
-            return True
+    def _is_among_n_newest(self, snapshots_to_consider: List[str], snapshot: str, n: int):
+        num_newer = sum(s["creation"] > snapshot["creation"] for s in snapshots_to_consider)
+        return num_newer < n
 
     def _is_weekly(self, snapshots: List[str], snapshot: str) -> bool:
         year = _get_year(snapshot["creation"])
         week = _get_week(snapshot["creation"])
         snapshots_in_that_week = [snapshot for snapshot in snapshots if _get_week(snapshot["creation"]) == week and _get_year(snapshot["creation"]) == year]
-        return snapshot == snapshots_in_that_week[-1]
+        return self._is_among_n_newest(snapshots_in_that_week, snapshot, 1)
 
     def _is_monthly(self, snapshots: List[str], snapshot: str) -> bool:
         year = _get_year(snapshot["creation"])
         month = _get_month(snapshot["creation"])
         snapshots_in_that_month = [snapshot for snapshot in snapshots if _get_month(snapshot["creation"]) == month and _get_year(snapshot["creation"]) == year]
-        return snapshot == snapshots_in_that_month[-1]
+        return self._is_among_n_newest(snapshots_in_that_month, snapshot, 1)
 
     def _must_keep(self, snapshots: List[str], snapshot: str, keep_last_n: Optional[int], keep_weekly_n: Optional[int], keep_monthly_n: Optional[int]) -> bool:
         # Last n
         if keep_last_n is None:
             return True
-        if self._is_snapshot_in_tail_of_list(snapshots, snapshot, keep_last_n):
+        if self._is_among_n_newest(snapshots, snapshot, keep_last_n):
             return True
 
         # Weekly n
@@ -191,7 +201,7 @@ class Backuper:
             if keep_weekly_n is None:
                 return True
             weekly_snapshots = [snapshot for snapshot in snapshots if self._is_weekly(snapshots, snapshot)]
-            if self._is_snapshot_in_tail_of_list(weekly_snapshots, snapshot, keep_weekly_n):
+            if self._is_among_n_newest(weekly_snapshots, snapshot, keep_weekly_n):
                 return True
 
         # Monthly n
@@ -200,7 +210,7 @@ class Backuper:
             if keep_monthly_n is None:
                 return True
             monthly_snapshots = [snapshot for snapshot in snapshots if self._is_monthly(snapshots, snapshot)]
-            if self._is_snapshot_in_tail_of_list(monthly_snapshots, snapshot, keep_monthly_n):
+            if self._is_among_n_newest(monthly_snapshots, snapshot, keep_monthly_n):
                 return True
 
         return False
@@ -208,19 +218,15 @@ class Backuper:
     def _find_next_snapshot(self, dataset_name: str, snapshots: List[Dict[str, str]], snapshots_in_restic: Dict[str, str],
                             keep_last_n: Optional[int], keep_weekly_n: Optional[int], keep_monthly_n: Optional[int]) -> Optional[str]:
         """
-        We consider each snapshot in `snapshots` in the given order, so it should be sorted by creation time.
+        `snapshots` must be sorted by creation time.
         """
-        snapshots_with_size = [snapshot for snapshot in snapshots if snapshot["used"] != 0]
         snapshot_names_in_restic = set([s["name"] for s in snapshots_in_restic])
         for snapshot in snapshots:
             snapshot_name = snapshot["name"]
-            if snapshot["used"] == 0:
-                print(F"Skipping snapshot {dataset_name}@{snapshot_name} because of zero size.")
-                continue
-            if not self._must_keep(snapshots_with_size, snapshot, keep_last_n, keep_weekly_n, keep_monthly_n):
+            if not self._must_keep(snapshots, snapshot, keep_last_n, keep_weekly_n, keep_monthly_n):
                 print(F"Skipping snapshot {dataset_name}@{snapshot_name} because it does not need to be kept according to the policy.")
                 continue
-            if snapshot["name"] in snapshot_names_in_restic:
+            if snapshot_name in snapshot_names_in_restic:
                 print(F"Skipping snapshot {dataset_name}@{snapshot_name} because it's already migrated.")
                 continue
             return snapshot
