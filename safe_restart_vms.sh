@@ -102,7 +102,7 @@ function start_vms {
 	LOGIT "start all enabled vms"
 	for vm in *; do
 		vm="${vm//.cfg}"
-		if grep -q "$vm" /etc/xen/disabled_vms.txt; then
+		if grep -xq "$vm" /etc/xen/disabled_vms.txt; then
 			echo -e "\t\e[33mskip vm  ›\e[0m$vm\e[33m‹\e[0m"
 		else
 			echo -e "\t\e[32mstart vm ›\e[0m$vm\e[32m‹\e[0m"
